@@ -156,7 +156,8 @@ repeated_measures <- read_excel("repeated_measures.xlsx")
 ggboxplot(repeated_measures, x = "Time", y = "MedianScores",
           color = "Condition", palette = "lancet",
           add = "jitter", 
-          facet.by = "Condition", short.panel.labs = FALSE) 
+          facet.by = "Condition", short.panel.labs = FALSE) + 
+          stat_n_text() #+ stat_compare_means(label = "p.format")
 ```
 ]
 --
@@ -165,34 +166,80 @@ ggboxplot(repeated_measures, x = "Time", y = "MedianScores",
  knitr::include_graphics("https://c.tenor.com/JfFIxtoErUkAAAAC/frye-stare.gif")
 ```
 ]
---
-.pull-right[
-```{r,out.width='100%', echo=FALSE}
-knitr::include_graphics('Images/comb.png')
-``` 
-]
 
 ---
 count:false
 # Results
-.pull-left[
-```{r, out.width="100%", echo= FALSE, cache=TRUE}
+
+```{r, include=FALSE, cache=TRUE}
 library(ggpubr)
 library(readxl)
 library(readxl)
+install.packages("EnvStats", repos = "http://cran.us.r-project.org")
+library(EnvStats)
 repeated_measures <- read_excel("repeated_measures.xlsx")
+
+```
+
+.pull-left[
+```{r, out.width="100%", echo= FALSE, cache=TRUE}
 
 ggboxplot(repeated_measures, x = "Time", y = "MedianScores",
           color = "Condition", palette = "lancet",
           add = "jitter", 
-          facet.by = "Condition", short.panel.labs = FALSE) 
+          facet.by = "Condition", short.panel.labs = FALSE) + 
+          stat_n_text()
 ```
 ]
 
+```{r, include=FALSE}
+# importing the main dataset from Github for descriptive statistics
+library(rio)
+RAW_data <- rio::import('https://github.com/mohdasti/Queens-Thesis/blob/master/Raw%20data/RAW_data.xlsx?raw=true', na="N/A")
+RAW <- RAW_data 
+RAW$Median.Diff <- RAW$`Median 1-10` - RAW$`Trial 91-100 median` 
+# after applying inclusion criteria
+RAW_nondeclr <- RAW[-c(7,34,39,25,13,44,49,64),]
+library("ggsci")
+# overall pattern of distribution of nappers, separated into SWS and non-SWS
+RAW_nondeclr$SWS[RAW_nondeclr$percentSWS == 0] <- "Absent"
+RAW_nondeclr$SWS[RAW_nondeclr$percentSWS != 0] <- "Present"
+RAW_NAP_nondecl <- RAW_nondeclr[1:21,]
+RAW_NAP_nondecl <- RAW_NAP_nondecl[-20,]
+```
+
 .pull-right[
-```{r,out.width='120%', echo=FALSE}
-knitr::include_graphics('Images/comb.png')
-``` 
+```{r, out.width="100%", echo= FALSE, cache=TRUE , warning=FALSE}
+
+
+ggplot(RAW_NAP_nondecl,
+       aes(
+         x = SWS,
+         y = Median.Diff,
+         color = SWS,
+         label = Code
+       )) +
+  geom_point(size = 4,
+             alpha = 0.7,
+             position = position_jitter(w = 0.1, h = 0))  +
+  stat_summary(
+    fun.y = mean,
+    geom = "point",
+    shape = 23,
+    color = "black",
+    size = 4
+  ) +
+  stat_summary(
+    fun.min = function(x)
+      (mean(x) - sd(x)
+      ),
+    fun.max=function(x)(mean(x)+sd(x)),
+    geom="errorbar", width=0.1) + xlab("SWS") + ylab("Difference of Medians") + theme_light() + scale_color_lancet() +
+  ggtitle("Distribution of difference of median scores of nappers. \n Participants are separated on the basis of SWS exhibition. \n Error bars reflect SD") +
+  stat_compare_means(method = "anova")
+```
+
+
 ]
 ---
 count:false
@@ -204,9 +251,7 @@ count:false
     - significant main effect of Time
         - $F(1,55)=6.648,\: p<.05,\: partial\:  \eta^{2} = .108$
     - no significant main effect of Condition
-        - $F(3,55)=1.541,\: p=.214,\: partial\:  \eta^{2} = .078$
     - no significant Interaction
-        - $F(3,55)=2.013,\: p=.123,\: partial\:  \eta^{2} = .099$
 ]
 --
 .pull-left[
@@ -226,6 +271,7 @@ count:false
     - significant main effect of Time
     - no significant main effect of Condition
     - no significant Interaction
+    
 - dividing the NAP into two conditions(?)
 - *sleep inertia* [3,4]
 ]]
@@ -238,9 +284,12 @@ library(readxl)
 library(ggsci)
 library(rstatix)
 mixed_design <- read_excel("mixed_design.xlsx")
-ggline(mixed_design, x = "Condition", y = "MedianScores", color = "Time", add = c("mean_se") ) +
+ggline(mixed_design, x = "Condition", y = "MedianScores", color = "Time", linetype = "Time", add = c("mean_se", "jitter")) +
      xlab("Condtion")+
-  ylab("Median of Scores") + theme_light() + scale_color_lancet()
+  ylab("Median of Scores") +
+  ggtitle("Comparison of median values across all conditions. \n Error bars reflect SEM") +
+  theme_light() +
+  scale_color_lancet()
 
 ```
 ]
